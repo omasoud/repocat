@@ -1,7 +1,7 @@
 [project]
 name = "repocat"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deterministic repository capture for prompt-friendly output"
 readme = "README.md"
 authors = [
     { name = "omasoud", email = "osama.masoud@gmail.com" }

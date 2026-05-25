@@ -15,6 +15,8 @@ def test_cxml_default_sorted_raw_and_without_timestamp(runner, monkeypatch, tmp_
 
     assert result.exit_code == 0
     assert result.stdout.index("<source>a.txt</source>") < result.stdout.index("<source>b.txt</source>")
+    assert "</document>\n\n<document index=\"2\">" in result.stdout
+    assert "</document>\n\n</documents>" in result.stdout
     assert "<raw>&content" in result.stdout
     assert "&lt;raw&gt;" not in result.stdout
     assert "timestamp" not in result.stdout.lower()

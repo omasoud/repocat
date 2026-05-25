@@ -81,6 +81,10 @@ def test_output_paths_support_absolute_inside_and_outside_root(runner, monkeypat
         (["--list-files", "--markdown"], "--list-files cannot be combined"),
         (["--list-files", "--output", "prompt.xml"], "--list-files cannot be combined"),
         (["--include", "!secret.txt"], "must not start with '!'"),
+        (["--include="], "--include requires a non-empty value"),
+        (["--exclude="], "--exclude requires a non-empty value"),
+        (["--output="], "--output requires a non-empty value"),
+        (["--exclude", "!secret.txt"], "--exclude patterns must not start with '!'"),
     ],
 )
 def test_main_usage_errors(runner, monkeypatch, tmp_path: Path, args: list[str], message: str) -> None:
@@ -110,6 +114,22 @@ def test_check_usage_errors_exit_2(runner, monkeypatch, tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "Unsupported check option" in result.output
+
+
+def test_check_supports_end_of_options_for_dash_paths(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "-weird.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "--", "-weird.txt"])
+
+    assert result.exit_code == 0
+    assert "INCLUDED  -weird.txt  default include" in result.stdout
+
+
+def test_malformed_cli_pattern_reports_usage_error(runner, monkeypatch, tmp_path: Path) -> None:
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--include", "\\"])
+
+    assert result.exit_code == 1
+    assert "Invalid ignore pattern in repocat rules" in result.output
 
 
 def test_installed_command_enters_real_cli() -> None:

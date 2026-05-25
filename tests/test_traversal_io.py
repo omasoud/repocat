@@ -123,6 +123,7 @@ def test_symlink_policy_cases(runner, monkeypatch, tmp_path: Path) -> None:
 
 def test_git_directory_is_not_traversed(runner, monkeypatch, tmp_path: Path) -> None:
     write_text(tmp_path, ".git/config", "secret\n")
+    write_text(tmp_path, "vendor/project/.git/config", "nested secret\n")
     write_text(tmp_path, "visible.txt")
 
     result = invoke_repocat(runner, monkeypatch, tmp_path, ["--include", "*", "--list-files"])
@@ -130,3 +131,13 @@ def test_git_directory_is_not_traversed(runner, monkeypatch, tmp_path: Path) -> 
     assert result.exit_code == 0
     assert listed_paths(result.stdout) == ["visible.txt"]
     assert os.name
+
+
+def test_malformed_gitignore_reports_clean_error(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "\\\n")
+    write_text(tmp_path, "visible.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--list-files"])
+
+    assert result.exit_code == 1
+    assert "Invalid ignore pattern in" in result.output

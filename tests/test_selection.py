@@ -123,6 +123,7 @@ def test_ignore_gitignore_disables_only_gitignore_layer(runner, monkeypatch, tmp
 
 def test_broad_include_cannot_override_hard_exclusions(runner, monkeypatch, tmp_path: Path) -> None:
     write_text(tmp_path, ".git/config", "secret\n")
+    write_text(tmp_path, "vendor/repo/.git/config", "nested secret\n")
     write_text(tmp_path, "prompt.xml", "old\n")
     write_text(tmp_path, "src/main.py")
 
@@ -137,4 +138,5 @@ def test_broad_include_cannot_override_hard_exclusions(runner, monkeypatch, tmp_
     output = (tmp_path / "prompt.xml").read_text(encoding="utf-8")
     assert "<source>src/main.py</source>" in output
     assert "<source>.git/config</source>" not in output
+    assert "<source>vendor/repo/.git/config</source>" not in output
     assert "<source>prompt.xml</source>" not in output

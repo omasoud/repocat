@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Sequence
 
 import typer
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from typer.rich_utils import _get_rich_console, highlighter
 
 from repocat.diagnostics import check_paths, format_check_result
 from repocat.models import CheckOptions, CliOptions, CliRule, OutputFormat
@@ -17,6 +21,7 @@ from repocat.selection import RepocatError, build_selection_config
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=False,
+    rich_markup_mode="rich",
 )
 
 
@@ -77,7 +82,7 @@ def run_main(argv: Sequence[str]) -> int:
     output = render_markdown(captured) if options.output_format == "markdown" else render_cxml(captured)
     if output_path is not None:
         try:
-            output_path.write_text(output, encoding="utf-8")
+            output_path.write_text(output, encoding="utf-8", newline="\n")
         except OSError as exc:
             raise RepocatError(f"Unable to write output file: {exc}") from exc
     else:
@@ -120,23 +125,23 @@ def parse_main_args(argv: Sequence[str]) -> CliOptions:
             index += 1
             output = _require_value(argv, index, token)
         elif token.startswith("--output="):
-            output = token.split("=", 1)[1]
+            output = _require_equals_value(token, "--output")
         elif token == "--ignore-gitignore":
             ignore_gitignore = True
         elif token in ("-i", "--include"):
             index += 1
             rules.append(CliRule("include", _validate_include(_require_value(argv, index, token))))
         elif token.startswith("--include="):
-            rules.append(CliRule("include", _validate_include(token.split("=", 1)[1])))
+            rules.append(CliRule("include", _validate_include(_require_equals_value(token, "--include"))))
         elif token in ("-e", "--exclude"):
             index += 1
-            rules.append(CliRule("exclude", _require_value(argv, index, token)))
+            rules.append(CliRule("exclude", _validate_exclude(_require_value(argv, index, token))))
         elif token.startswith("--exclude="):
-            rules.append(CliRule("exclude", token.split("=", 1)[1]))
+            rules.append(CliRule("exclude", _validate_exclude(_require_equals_value(token, "--exclude"))))
         elif token == "--list-files":
             list_files = True
         elif token in ("-h", "--help"):
-            typer.echo(main_help())
+            print_main_help()
             raise typer.Exit(0)
         else:
             raise UsageError(f"Unknown argument: {token}")
@@ -166,25 +171,28 @@ def parse_check_args(argv: Sequence[str]) -> CheckOptions:
     index = 0
     while index < len(argv):
         token = argv[index]
+        if token == "--":
+            files.extend(argv[index + 1 :])
+            break
         if token == "--ignore-gitignore":
             ignore_gitignore = True
         elif token in ("-i", "--include"):
             index += 1
             rules.append(CliRule("include", _validate_include(_require_value(argv, index, token))))
         elif token.startswith("--include="):
-            rules.append(CliRule("include", _validate_include(token.split("=", 1)[1])))
+            rules.append(CliRule("include", _validate_include(_require_equals_value(token, "--include"))))
         elif token in ("-e", "--exclude"):
             index += 1
-            rules.append(CliRule("exclude", _require_value(argv, index, token)))
+            rules.append(CliRule("exclude", _validate_exclude(_require_value(argv, index, token))))
         elif token.startswith("--exclude="):
-            rules.append(CliRule("exclude", token.split("=", 1)[1]))
+            rules.append(CliRule("exclude", _validate_exclude(_require_equals_value(token, "--exclude"))))
         elif token in ("-c", "--cxml", "-m", "--markdown", "-o", "--output", "--list-files"):
             raise UsageError(f"Unsupported check option: {token}")
         elif token in ("-h", "--help"):
-            typer.echo(check_help())
+            print_check_help()
             raise typer.Exit(0)
         elif token.startswith("-"):
-            raise UsageError(f"Unknown argument: {token}")
+            files.append(token)
         else:
             files.append(token)
         index += 1
@@ -209,36 +217,87 @@ def _require_value(argv: Sequence[str], index: int, option_name: str) -> str:
     return value
 
 
+def _require_equals_value(token: str, option_name: str) -> str:
+    """Return a non-empty ``--option=value`` value."""
+    value = token.split("=", 1)[1]
+    if value == "":
+        raise UsageError(f"{option_name} requires a non-empty value")
+    return value
+
+
 def _validate_include(pattern: str) -> str:
     """Validate an include pattern."""
+    if pattern == "":
+        raise UsageError("-i/--include requires a non-empty value")
     if pattern.startswith("!"):
         raise UsageError("-i/--include patterns must not start with '!'")
     return pattern
 
 
-def main_help() -> str:
-    """Return concise manual help for the raw parser."""
-    return (
-        "Usage: repocat [OPTIONS]\n\n"
-        "Options:\n"
-        "  -c, --cxml              Render Claude XML-style output (default).\n"
-        "  -m, --markdown          Render Markdown fenced code blocks.\n"
-        "  -o, --output FILE       Write output to FILE.\n"
-        "      --ignore-gitignore  Disable .gitignore handling.\n"
-        "  -i, --include PATTERN   Force-include a gitignore-style pattern.\n"
-        "  -e, --exclude PATTERN   Exclude a gitignore-style pattern.\n"
-        "      --list-files        List captured files only.\n"
-        "\nCommands:\n"
-        "  check [OPTIONS] FILE...  Report whether paths would be captured."
+def _validate_exclude(pattern: str) -> str:
+    """Validate an exclude pattern."""
+    if pattern == "":
+        raise UsageError("-e/--exclude requires a non-empty value")
+    if pattern.startswith("!"):
+        raise UsageError("-e/--exclude patterns must not start with '!'")
+    return pattern
+
+
+def print_main_help() -> None:
+    """Print rich-formatted main help."""
+    _print_rich_help(
+        usage="Usage: repocat [OPTIONS]",
+        description="Capture the current working directory.",
+        options=[
+            ("-c, --cxml", "Render Claude XML-style output (default)."),
+            ("-m, --markdown", "Render Markdown fenced code blocks."),
+            ("-o, --output FILE", "Write output to FILE."),
+            ("--ignore-gitignore", "Disable .gitignore handling."),
+            ("-i, --include PATTERN", "Force-include a gitignore-style pattern."),
+            ("-e, --exclude PATTERN", "Exclude a gitignore-style pattern."),
+            ("--list-files", "List captured files only."),
+        ],
+        commands=[("check [OPTIONS] FILE...", "Report whether paths would be captured.")],
     )
 
 
-def check_help() -> str:
-    """Return concise manual help for check mode."""
-    return (
-        "Usage: repocat check [OPTIONS] FILE...\n\n"
-        "Options:\n"
-        "      --ignore-gitignore  Disable .gitignore handling.\n"
-        "  -i, --include PATTERN   Force-include a gitignore-style pattern.\n"
-        "  -e, --exclude PATTERN   Exclude a gitignore-style pattern."
+def print_check_help() -> None:
+    """Print rich-formatted check help."""
+    _print_rich_help(
+        usage="Usage: repocat check [OPTIONS] FILE...",
+        description="Report whether paths would be captured.",
+        options=[
+            ("--ignore-gitignore", "Disable .gitignore handling."),
+            ("-i, --include PATTERN", "Force-include a gitignore-style pattern."),
+            ("-e, --exclude PATTERN", "Exclude a gitignore-style pattern."),
+        ],
+        commands=[],
     )
+
+
+def _print_rich_help(
+    usage: str,
+    description: str,
+    options: list[tuple[str, str]],
+    commands: list[tuple[str, str]],
+) -> None:
+    """Print help using Typer's Rich console and highlighter."""
+    console = _get_rich_console()
+    console.print(highlighter(usage), style="bold yellow")
+    console.print(Text(description))
+
+    options_table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+    options_table.add_column("Option", style="bold cyan", no_wrap=True)
+    options_table.add_column("Description")
+    for option, help_text in options:
+        options_table.add_row(highlighter(option), help_text)
+    console.print(Panel(options_table, title="Options", title_align="left", border_style="dim"))
+
+    if commands:
+        commands_table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+        commands_table.add_column("Command", style="bold cyan", no_wrap=True)
+        commands_table.add_column("Description")
+        for command, help_text in commands:
+            commands_table.add_row(command, help_text)
+        console.print(Panel(commands_table, title="Commands", title_align="left", border_style="dim"))
+

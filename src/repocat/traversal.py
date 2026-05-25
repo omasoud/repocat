@@ -54,7 +54,7 @@ def _walk_dir(
     dir_rel: str,
     active_gitignores: tuple[ActiveGitignoreSpec, ...],
 ) -> Iterator[CandidateFile]:
-    if dir_path.name == ".git" and dir_rel == ".git":
+    if dir_path.name == ".git":
         return
 
     active = list(active_gitignores)

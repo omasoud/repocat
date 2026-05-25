@@ -40,7 +40,7 @@ def capture_repository(config: SelectionConfig, warn: Warn) -> list[CapturedFile
 def read_utf8(path: Path, root_relative_path: str, warn: Warn) -> str | None:
     """Read a file as UTF-8, warning and returning ``None`` on failure."""
     try:
-        return path.read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8", newline="")
     except UnicodeDecodeError:
         warn(f"Warning: skipping non-UTF-8 file: {root_relative_path}")
     except OSError as exc:

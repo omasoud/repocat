@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from pathspec import GitIgnoreSpec
+from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from repocat.models import (
     ActiveGitignoreSpec,
@@ -39,7 +40,7 @@ class IgnoreManager:
             return cached
 
         try:
-            text = gitignore_path.read_text(encoding="utf-8")
+            text = gitignore_path.read_text(encoding="utf-8", newline="")
         except UnicodeDecodeError:
             if self._warn is not None:
                 self._warn(f"Warning: skipping non-UTF-8 .gitignore: {gitignore_path}")
@@ -50,7 +51,7 @@ class IgnoreManager:
             return None
 
         sources = tuple(RuleSource(line, str(gitignore_path)) for line in text.splitlines())
-        compiled = (GitIgnoreSpec.from_lines([source.pattern for source in sources]), sources)
+        compiled = (_compile_gitignore_spec(sources, str(gitignore_path)), sources)
         self._cache[gitignore_path] = compiled
         return compiled
 
@@ -67,7 +68,7 @@ def build_selection_config(
 
     if repocatignore_path.is_file():
         try:
-            text = repocatignore_path.read_text(encoding="utf-8")
+            text = repocatignore_path.read_text(encoding="utf-8", newline="")
         except UnicodeDecodeError as exc:
             raise RepocatError(".repocatignore must be valid UTF-8") from exc
         except OSError as exc:
@@ -80,7 +81,7 @@ def build_selection_config(
         else:
             sources.append(RuleSource(rule.pattern, "command line"))
 
-    spec = GitIgnoreSpec.from_lines([source.pattern for source in sources])
+    spec = _compile_gitignore_spec(tuple(sources), "repocat rules")
     return SelectionConfig(
         root=root,
         output_path=output_path,
@@ -201,3 +202,11 @@ def _source_at(sources: tuple[RuleSource, ...], index: int | None) -> RuleSource
     if index is None or index < 0 or index >= len(sources):
         return RuleSource("<unknown>", "<unknown>")
     return sources[index]
+
+
+def _compile_gitignore_spec(sources: tuple[RuleSource, ...], description: str) -> GitIgnoreSpec:
+    """Compile gitignore patterns with a clean repocat-facing error."""
+    try:
+        return GitIgnoreSpec.from_lines([source.pattern for source in sources])
+    except GitIgnorePatternError as exc:
+        raise RepocatError(f"Invalid ignore pattern in {description}: {exc}") from exc

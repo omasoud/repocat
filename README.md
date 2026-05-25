@@ -79,7 +79,7 @@ Precedence:
 
 Hard exclusions are:
 
-- `.git/` and all descendants.
+- Any `.git/` directory and all descendants.
 - The `--output` file when it is inside the invocation root.
 
 Nested `.repocatignore` files are ignored. Nested `.gitignore` files are honored

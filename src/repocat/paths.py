@@ -48,8 +48,8 @@ def resolved_inside_root(root: Path, path: Path) -> bool:
 
 
 def hard_git_path(root_relative_path: str) -> bool:
-    """Return whether a root-relative path is inside ``.git``."""
-    return root_relative_path == ".git" or root_relative_path.startswith(".git/")
+    """Return whether a root-relative path is inside any ``.git`` directory."""
+    return ".git" in root_relative_path.split("/")
 
 
 def child_rel(parent_rel: str, name: str) -> str:

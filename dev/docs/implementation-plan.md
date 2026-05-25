@@ -136,3 +136,14 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] ACC-02 Manually smoke test `repocat`, `repocat --markdown`, `repocat --list-files`, and `repocat check README.md` from the repository root.
 - [x] ACC-03 Confirm all acceptance criteria in the specification are represented by completed tasks or tests.
 
+## Post-Review Fixes
+
+- [x] QA-01 Add a blank line after every CXML `</document>` closing tag.
+- [x] QA-02 Enable Rich-formatted help through Typer's Rich console.
+- [x] QA-03 Reject empty `--include=`, `--exclude=`, and `--output=` values.
+- [x] QA-04 Reject `--exclude` patterns that start with `!`.
+- [x] QA-05 Report malformed pathspec patterns as clean repocat errors.
+- [x] QA-06 Make UTF-8 read/write newline behavior explicit.
+- [x] QA-07 Support `repocat check -- FILE...` for dash-prefixed paths.
+- [x] QA-08 Treat nested `.git/` directories as hard exclusions and document the policy.
+

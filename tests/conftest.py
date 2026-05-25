@@ -33,7 +33,7 @@ def write_text(root: Path, relative: str, content: str = "content\n") -> Path:
     """Create a UTF-8 text file under ``root``."""
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    path.write_text(content, encoding="utf-8", newline="\n")
     return path
 
 

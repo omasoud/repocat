@@ -10,8 +10,9 @@ specification:
 - `repocat.selection` loads `.repocatignore`, caches `.gitignore` files, and
   evaluates hard exclusions, repocat rules, and gitignore rules in precedence
   order.
-- `repocat.traversal` walks the invocation root, prunes `.git/`, maintains
-  active nested `.gitignore` specs, and applies symlink traversal policy.
+- `repocat.traversal` walks the invocation root, prunes any directory named
+  `.git`, maintains active nested `.gitignore` specs, and applies symlink
+  traversal policy.
 - `repocat.reading` reads selected files as UTF-8 and emits skip warnings.
 - `repocat.rendering` renders Claude XML-style output and Markdown output.
 - `repocat.diagnostics` implements `--list-files` membership reuse and
@@ -22,3 +23,7 @@ The CLI uses a single Typer command with manual dispatch for the `check` command
 token. This keeps the public syntax as `repocat check FILE...` while preserving
 the exact argv order of repeated `--include` and `--exclude` options before
 building the repocat rule layer.
+
+Hard exclusion policy treats every directory named `.git` under the invocation
+root as non-capturable, including nested repositories such as
+`vendor/project/.git/`.

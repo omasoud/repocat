@@ -48,7 +48,7 @@ def render_cxml(files: list[CapturedFile]) -> str:
         if not captured.content.endswith("\n"):
             parts.append("\n")
         parts.append("</document_content>\n")
-        parts.append("</document>\n")
+        parts.append("</document>\n\n")
     parts.append("</documents>\n")
     return "".join(parts)
 
