@@ -10,3 +10,5 @@ wheels/
 .venv
 local/
 .github/
+AGENT.md
+all.txt

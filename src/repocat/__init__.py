@@ -1,6 +1,8 @@
-"""repocat — TODO."""
+"""Repository capture CLI package."""
 
 from importlib.metadata import PackageNotFoundError, version
+
+from repocat.cli import app
 
 try:
     __version__ = version("repocat")
@@ -9,4 +11,5 @@ except PackageNotFoundError:
 
 
 def main() -> None:
-    print("Hello from repocat!")
+    """Run the repocat command-line application."""
+    app()
