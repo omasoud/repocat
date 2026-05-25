@@ -146,4 +146,7 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] QA-06 Make UTF-8 read/write newline behavior explicit.
 - [x] QA-07 Support `repocat check -- FILE...` for dash-prefixed paths.
 - [x] QA-08 Treat nested `.git/` directories as hard exclusions and document the policy.
+- [x] QA-09 Reject unknown `check` options while preserving dash-prefixed paths after `--`.
+- [x] QA-10 Keep diagnostic source metadata aligned across blank and comment ignore-file lines.
+- [x] QA-11 Test `.repocatignore` invalid UTF-8 as a fatal error.
 

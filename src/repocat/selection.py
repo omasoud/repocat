@@ -7,6 +7,7 @@ from typing import Callable
 
 from pathspec import GitIgnoreSpec
 from pathspec.patterns.gitignore import GitIgnorePatternError
+from pathspec.patterns.gitignore.spec import GitIgnoreSpecPattern
 
 from repocat.models import (
     ActiveGitignoreSpec,
@@ -51,7 +52,7 @@ class IgnoreManager:
             return None
 
         sources = tuple(RuleSource(line, str(gitignore_path)) for line in text.splitlines())
-        compiled = (_compile_gitignore_spec(sources, str(gitignore_path)), sources)
+        compiled = _compile_gitignore_sources(sources, str(gitignore_path))
         self._cache[gitignore_path] = compiled
         return compiled
 
@@ -81,13 +82,13 @@ def build_selection_config(
         else:
             sources.append(RuleSource(rule.pattern, "command line"))
 
-    spec = _compile_gitignore_spec(tuple(sources), "repocat rules")
+    spec, effective_sources = _compile_gitignore_sources(tuple(sources), "repocat rules")
     return SelectionConfig(
         root=root,
         output_path=output_path,
         ignore_gitignore=ignore_gitignore,
         repocat_spec=spec,
-        repocat_sources=tuple(sources),
+        repocat_sources=effective_sources,
     )
 
 
@@ -204,9 +205,24 @@ def _source_at(sources: tuple[RuleSource, ...], index: int | None) -> RuleSource
     return sources[index]
 
 
-def _compile_gitignore_spec(sources: tuple[RuleSource, ...], description: str) -> GitIgnoreSpec:
-    """Compile gitignore patterns with a clean repocat-facing error."""
+def _compile_gitignore_sources(
+    sources: tuple[RuleSource, ...],
+    description: str,
+) -> tuple[GitIgnoreSpec, tuple[RuleSource, ...]]:
+    """Compile effective gitignore patterns and aligned source metadata."""
+    patterns: list[GitIgnoreSpecPattern] = []
+    effective_sources: list[RuleSource] = []
+
     try:
-        return GitIgnoreSpec.from_lines([source.pattern for source in sources])
+        for source in sources:
+            if source.pattern == "":
+                continue
+            pattern = GitIgnoreSpecPattern(source.pattern)
+            if pattern.include is None:
+                continue
+            patterns.append(pattern)
+            effective_sources.append(source)
     except GitIgnorePatternError as exc:
         raise RepocatError(f"Invalid ignore pattern in {description}: {exc}") from exc
+
+    return GitIgnoreSpec(patterns), tuple(effective_sources)

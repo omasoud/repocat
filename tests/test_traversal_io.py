@@ -141,3 +141,13 @@ def test_malformed_gitignore_reports_clean_error(runner, monkeypatch, tmp_path: 
 
     assert result.exit_code == 1
     assert "Invalid ignore pattern in" in result.output
+
+
+def test_non_utf8_repocatignore_is_fatal(runner, monkeypatch, tmp_path: Path) -> None:
+    write_bytes(tmp_path, ".repocatignore", b"\xff")
+    write_text(tmp_path, "visible.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--list-files"])
+
+    assert result.exit_code == 1
+    assert ".repocatignore must be valid UTF-8" in result.output

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Sequence
 
@@ -29,10 +30,38 @@ class UsageError(Exception):
     """A command-line usage error."""
 
 
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the CLI from raw process arguments."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "check":
+        try:
+            raise SystemExit(run_check(args[1:]))
+        except typer.Exit as exc:
+            raise SystemExit(exc.exit_code) from exc
+        except UsageError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise SystemExit(2) from exc
+        except RepocatError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise SystemExit(2) from exc
+
+    try:
+        raise SystemExit(run_main(args))
+    except typer.Exit as exc:
+        raise SystemExit(exc.exit_code) from exc
+    except UsageError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1) from exc
+    except RepocatError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+
 @app.command(
     context_settings={
         "allow_extra_args": True,
         "ignore_unknown_options": True,
+        "allow_interspersed_args": False,
         "help_option_names": [],
     },
 )
@@ -192,7 +221,7 @@ def parse_check_args(argv: Sequence[str]) -> CheckOptions:
             print_check_help()
             raise typer.Exit(0)
         elif token.startswith("-"):
-            files.append(token)
+            raise UsageError(f"Unknown argument: {token}")
         else:
             files.append(token)
         index += 1
@@ -300,4 +329,3 @@ def _print_rich_help(
         for command, help_text in commands:
             commands_table.add_row(command, help_text)
         console.print(Panel(commands_table, title="Commands", title_align="left", border_style="dim"))
-

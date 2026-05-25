@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from repocat.cli import main as cli_main
 from conftest import invoke_repocat, listed_paths, write_text
 
 
@@ -114,6 +115,32 @@ def test_check_usage_errors_exit_2(runner, monkeypatch, tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "Unsupported check option" in result.output
+
+
+def test_main_rejects_unknown_option(runner, monkeypatch, tmp_path: Path) -> None:
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--not-real"])
+
+    assert result.exit_code == 1
+    assert "Unknown argument" in result.output
+
+
+def test_check_rejects_unknown_dash_option(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "README.md")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "--not-real", "README.md"])
+
+    assert result.exit_code == 2
+    assert "Unknown argument" in result.output
+
+
+def test_direct_entrypoint_check_usage_errors_exit_2(monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "README.md")
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_main(["check", "--not-real", "README.md"])
+
+    assert exc_info.value.code == 2
 
 
 def test_check_supports_end_of_options_for_dash_paths(runner, monkeypatch, tmp_path: Path) -> None:

@@ -57,6 +57,36 @@ def test_check_repocat_include_overrides_gitignore(runner, monkeypatch, tmp_path
     assert "INCLUDED  tmp/keep.txt  matched repocat include: !tmp/keep.txt" in result.stdout
 
 
+def test_blank_lines_do_not_shift_repocat_diagnostic_pattern(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".repocatignore", "\n\nsecret.txt\n")
+    write_text(tmp_path, "secret.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "secret.txt"])
+
+    assert result.exit_code == 1
+    assert "matched repocat exclude: secret.txt" in result.stdout
+
+
+def test_blank_lines_do_not_shift_gitignore_diagnostic_pattern(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "\n\nignored.txt\n")
+    write_text(tmp_path, "ignored.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "ignored.txt"])
+
+    assert result.exit_code == 1
+    assert "matched .gitignore: ignored.txt" in result.stdout
+
+
+def test_comment_lines_do_not_shift_gitignore_diagnostic_pattern(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "# comment\nignored.txt\n")
+    write_text(tmp_path, "ignored.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "ignored.txt"])
+
+    assert result.exit_code == 1
+    assert "matched .gitignore: ignored.txt" in result.stdout
+
+
 def test_check_absolute_path_outside_root_is_excluded(runner, monkeypatch, tmp_path: Path) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside.txt"
     outside.write_text("outside\n", encoding="utf-8")
