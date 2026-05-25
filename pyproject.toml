@@ -15,3 +15,11 @@ repocat = "repocat:main"
 [build-system]
 requires = ["uv_build>=0.9.18,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+exclude-newer = "2 days" # Exclude packages released in the last 2 days as a protection against undiscovered supply chain vulnerabilities.
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
