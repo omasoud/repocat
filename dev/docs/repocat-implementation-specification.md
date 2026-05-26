@@ -157,13 +157,16 @@ When this option is set:
 ```bash
 -i, --include <pattern>
 -e, --exclude <pattern>
+-g, --gitignore-filter
 ```
 
-Both options are repeatable and order-sensitive.
+These options are repeatable and order-sensitive.
 
 `--exclude <pattern>` appends a normal gitignore-style pattern to the repocat layer.
 
 `--include <pattern>` appends a negated gitignore-style pattern to the repocat layer. Internally, this is equivalent to prepending `!` to the supplied pattern.
+
+`--gitignore-filter` inserts an exclusion-only `.gitignore` filtering step into the repocat layer.
 
 Examples:
 
@@ -172,6 +175,7 @@ repocat -e tmp/
 repocat -i tmp/keep.txt
 repocat -e tmp/ -i tmp/keep.txt
 repocat -i '*' -e secrets.env
+repocat -e '*' -i 'tests/**' -g
 ```
 
 Command-line rules are appended after `.repocatignore` in exact argv order. Later matching rules in the repocat layer override earlier matching rules in that same layer.
@@ -183,6 +187,58 @@ repocat -e tmp/ -i tmp/keep.txt -e tmp/keep.txt
 ```
 
 The final `-e tmp/keep.txt` wins for `tmp/keep.txt`, so that file is excluded.
+
+#### Gitignore Filter Rule
+
+`-g` / `--gitignore-filter` inserts a `.gitignore` filtering step into the ordered repocat rule sequence.
+
+When reached for a file, the gitignore filter evaluates the applicable `.gitignore` files for that file.
+
+If the final `.gitignore` result is "ignored," the current decision becomes exclude.
+
+If the final `.gitignore` result is "not ignored" or "no match," the current decision is left unchanged.
+
+The gitignore filter never includes a file by itself. It can only exclude files.
+
+This is useful when a repocat include rule selects a subtree, but the user still wants `.gitignore` exclusions inside that subtree to apply.
+
+Recommended example:
+
+```bash
+repocat -e '*' -i 'tests/**' -g --list-files
+```
+
+Meaning:
+
+```text
+1. Exclude everything.
+2. Re-include files under tests/.
+3. Then apply .gitignore as an exclusion filter.
+```
+
+This captures only non-gitignored files under `tests/`.
+
+Sequence matters:
+
+```bash
+repocat -e '*' -i 'tests/**' -g
+```
+
+Includes tests, then removes gitignored files.
+
+```bash
+repocat -e '*' -g -i 'tests/**'
+```
+
+Applies the gitignore filter before the include, so the later include can still force-include ignored test files.
+
+```bash
+repocat -e '*' -i 'tests/**' -g -i 'tests/fixtures/ignored-but-needed.txt'
+```
+
+Includes tests, removes gitignored files, then force-includes one ignored fixture.
+
+The gitignore filter must not be treated as full `.gitignore` decision insertion. `.gitignore` negations can produce include decisions, but `-g` must not re-include files by itself.
 
 ### 4.1.5 List Mode
 
@@ -214,6 +270,7 @@ It should support the same selection-related options as the main command:
 
 ```bash
 repocat check [--ignore-gitignore] [-i PATTERN] [-e PATTERN] FILE...
+repocat check [--ignore-gitignore] [-i PATTERN] [-e PATTERN] [-g] FILE...
 ```
 
 Each supplied file path is resolved relative to the invocation root unless absolute. The output uses normalized root-relative POSIX paths where possible.
@@ -311,8 +368,8 @@ For every file, repocat makes the capture decision in this order:
 ```text
 1. If the path is hard-excluded, exclude it.
 
-2. Evaluate the repocat layer.
-   If the repocat layer has a matching rule, that decision wins.
+2. Evaluate the ordered repocat layer.
+   If the repocat layer has a matching include/exclude rule or gitignore filter exclusion, that decision wins.
 
 3. If --ignore-gitignore is not set, evaluate applicable .gitignore files.
    If .gitignore has a matching decision, use it.
@@ -343,7 +400,7 @@ def should_capture(path):
 
 The repocat layer has absolute precedence over `.gitignore`.
 
-If `.repocatignore` or CLI rules match a file, `.gitignore` is not consulted for that file.
+If `.repocatignore`, CLI include/exclude rules, or a CLI gitignore filter match a file, `.gitignore` is not consulted again for that file except at explicit `-g` / `--gitignore-filter` positions in the repocat rule sequence.
 
 Example:
 
@@ -483,6 +540,24 @@ def evaluate_gitignore_layer(root_relative_path: str, active_gitignore_specs) ->
 
     return None
 ```
+
+## 6.8 Gitignore Filter Evaluation
+
+The `-g` / `--gitignore-filter` action reuses the same applicable `.gitignore` stack as the normal gitignore layer, but it is exclusion-only.
+
+Conceptual implementation:
+
+```python
+def apply_gitignore_filter(current_decision, root_relative_path, active_gitignore_specs):
+    gitignore_decision = evaluate_gitignore_layer(root_relative_path, active_gitignore_specs)
+
+    if gitignore_decision is False:
+        return False
+
+    return current_decision
+```
+
+If `.gitignore` says a file is ignored, the current ordered repocat decision becomes exclude. If `.gitignore` says a file is not ignored, or no `.gitignore` pattern matches, the current decision is unchanged. This means `-g` can remove files from a prior include, but it cannot bring files back after a prior exclude.
 
 ---
 
@@ -1081,6 +1156,18 @@ Recommended behavior:
 -i/--include patterns must not start with '!'. Use -e/--exclude for exclusions.
 ```
 
+Because `-g` is an ordered action, the repocat CLI rule layer cannot be represented as one flat `GitIgnoreSpec` once gitignore filters are present.
+
+A simple implementation is to represent CLI rules as ordered actions:
+
+```text
+ExcludePattern(pattern)
+IncludePattern(pattern)
+GitignoreFilter
+```
+
+Compile contiguous include/exclude pattern segments into `GitIgnoreSpec` chunks, then evaluate the chunks in order. When a `GitignoreFilter` is encountered, evaluate the active `.gitignore` stack and set the current decision to exclude only when `.gitignore` says the file is ignored.
+
 ## 15.3 Walking Files
 
 Recommended recursive outline:
@@ -1245,7 +1332,21 @@ All traversable UTF-8 files are captured except secrets.env, hard exclusions, an
 
 The later `-e secrets.env` overrides the earlier `-i '*'` inside the repocat layer.
 
-## 16.8 List Files
+## 16.8 Include a Subtree While Respecting Gitignore Inside It
+
+```bash
+repocat -e '*' -i 'tests/**' -g --list-files
+```
+
+Result:
+
+```text
+Only non-gitignored files under tests/ are captured.
+```
+
+The final `-g` applies `.gitignore` as an exclusion-only filter after `tests/**` has been included.
+
+## 16.9 List Files
 
 ```bash
 repocat --list-files
@@ -1261,7 +1362,7 @@ src/main.py
 
 No file contents are printed.
 
-## 16.9 Check Files
+## 16.10 Check Files
 
 ```bash
 repocat check README.md tmp/cache.db
@@ -1293,6 +1394,9 @@ Tests must cover:
 - CLI include overriding `.gitignore` exclusion;
 - CLI exclude overriding earlier CLI include;
 - CLI include overriding earlier CLI exclude;
+- `-g` excluding gitignored files after a repocat include;
+- `-g` before a later include allowing that later include to force-capture an ignored file;
+- `-g` not re-including files due to `.gitignore` negation;
 - `.repocatignore` followed by CLI rules, proving CLI rules are appended later;
 - `--ignore-gitignore` disabling `.gitignore` behavior;
 - `-i '*'` effectively bypassing `.gitignore` for traversable files;
@@ -1381,6 +1485,8 @@ Additional explanation:
 
 `--exclude PATTERN` excludes matching files from the prompt.
 
+`--gitignore-filter` / `-g` applies `.gitignore` as an exclusion-only filter at that point in the ordered repocat rule sequence.
+
 Rules are order-sensitive. Later repocat rules override earlier repocat rules.
 
 `--ignore-gitignore` disables `.gitignore` entirely.
@@ -1409,6 +1515,7 @@ A v1 implementation is complete when:
 - `--output` writes UTF-8 output to a file and excludes that file from capture;
 - `.repocatignore` at cwd is honored;
 - CLI `--include` and `--exclude` are repeatable and order-sensitive;
+- CLI `--gitignore-filter` is repeatable, order-sensitive, and exclusion-only;
 - repocat-layer rules override `.gitignore` rules;
 - `.gitignore` files at cwd or lower are honored by default;
 - `.gitignore` files above cwd are ignored;
@@ -1422,4 +1529,3 @@ A v1 implementation is complete when:
 - `check FILE...` reports capture decisions and uses the specified exit codes;
 - symlink policy is implemented;
 - test coverage exists for the precedence model, traversal behavior, renderers, diagnostics, and CLI validation.
-

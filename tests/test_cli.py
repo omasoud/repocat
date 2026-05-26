@@ -110,6 +110,16 @@ def test_repeated_include_exclude_order_is_preserved(runner, monkeypatch, tmp_pa
     assert listed_paths(result.stdout) == ["keep.txt"]
 
 
+def test_gitignore_filter_is_available_in_main_and_check_help(runner, monkeypatch, tmp_path: Path) -> None:
+    main_help = invoke_repocat(runner, monkeypatch, tmp_path, ["--help"])
+    check_help = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "--help"])
+
+    assert main_help.exit_code == 0
+    assert "-g, --gitignore-filter" in main_help.stdout
+    assert check_help.exit_code == 0
+    assert "-g, --gitignore-filter" in check_help.stdout
+
+
 def test_check_usage_errors_exit_2(runner, monkeypatch, tmp_path: Path) -> None:
     result = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "--markdown", "README.md"])
 

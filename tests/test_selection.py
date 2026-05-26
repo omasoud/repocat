@@ -121,6 +121,82 @@ def test_ignore_gitignore_disables_only_gitignore_layer(runner, monkeypatch, tmp
     assert listed_paths(result.stdout) == [".gitignore", ".repocatignore", "ignored.txt"]
 
 
+def test_gitignore_filter_limits_included_subtree_to_non_gitignored_files(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "__pycache__/\n*.pyc\n")
+    write_text(tmp_path, "src/main.py")
+    write_text(tmp_path, "tests/test_cli.py")
+    write_text(tmp_path, "tests/__pycache__/test_cli.pyc")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        ["--exclude", "*", "--include", "tests/**", "--gitignore-filter", "--list-files"],
+    )
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["tests/test_cli.py"]
+
+
+def test_gitignore_filter_before_later_include_allows_force_include(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "tests/ignored.txt\n")
+    write_text(tmp_path, "tests/ignored.txt")
+    write_text(tmp_path, "tests/visible.txt")
+    write_text(tmp_path, "src/main.py")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        ["-e", "*", "-g", "-i", "tests/**", "--list-files"],
+    )
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["tests/ignored.txt", "tests/visible.txt"]
+
+
+def test_later_include_can_restore_specific_file_after_gitignore_filter(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "tests/ignored.txt\ntests/fixtures/ignored-but-needed.txt\n")
+    write_text(tmp_path, "tests/ignored.txt")
+    write_text(tmp_path, "tests/test_cli.py")
+    write_text(tmp_path, "tests/fixtures/ignored-but-needed.txt")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        [
+            "-e",
+            "*",
+            "-i",
+            "tests/**",
+            "-g",
+            "-i",
+            "tests/fixtures/ignored-but-needed.txt",
+            "--list-files",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["tests/fixtures/ignored-but-needed.txt", "tests/test_cli.py"]
+
+
+def test_gitignore_filter_does_not_include_from_gitignore_negation(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "*.txt\n!important.txt\n")
+    write_text(tmp_path, "important.txt")
+    write_text(tmp_path, "tests/test_cli.py")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        ["-e", "*", "-i", "tests/**", "-g", "--list-files"],
+    )
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["tests/test_cli.py"]
+
+
 def test_broad_include_cannot_override_hard_exclusions(runner, monkeypatch, tmp_path: Path) -> None:
     write_text(tmp_path, ".git/config", "secret\n")
     write_text(tmp_path, "vendor/repo/.git/config", "nested secret\n")

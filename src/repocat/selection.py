@@ -14,6 +14,9 @@ from repocat.models import (
     CandidateFile,
     CliRule,
     DecisionKind,
+    RepocatAction,
+    RepocatGitignoreFilterAction,
+    RepocatPatternAction,
     RuleSource,
     SelectionConfig,
     SelectionDecision,
@@ -64,6 +67,7 @@ def build_selection_config(
     cli_rules: tuple[CliRule, ...],
 ) -> SelectionConfig:
     """Build a selection configuration from root files and CLI rules."""
+    actions: list[RepocatAction] = []
     sources: list[RuleSource] = []
     repocatignore_path = root / ".repocatignore"
 
@@ -76,19 +80,32 @@ def build_selection_config(
             raise RepocatError(f"Unable to read .repocatignore: {exc}") from exc
         sources.extend(RuleSource(line, ".repocatignore") for line in text.splitlines())
 
+    root_action = _make_pattern_action(tuple(sources), "repocat rules")
+    if root_action is not None:
+        actions.append(root_action)
+
+    cli_sources: list[RuleSource] = []
     for rule in cli_rules:
         if rule.kind == "include":
-            sources.append(RuleSource(f"!{rule.pattern}", "command line"))
-        else:
-            sources.append(RuleSource(rule.pattern, "command line"))
+            cli_sources.append(RuleSource(f"!{rule.pattern}", "command line"))
+        elif rule.kind == "exclude":
+            cli_sources.append(RuleSource(rule.pattern or "", "command line"))
+        elif rule.kind == "gitignore_filter":
+            cli_action = _make_pattern_action(tuple(cli_sources), "repocat rules")
+            if cli_action is not None:
+                actions.append(cli_action)
+            cli_sources = []
+            actions.append(RepocatGitignoreFilterAction())
 
-    spec, effective_sources = _compile_gitignore_sources(tuple(sources), "repocat rules")
+    cli_action = _make_pattern_action(tuple(cli_sources), "repocat rules")
+    if cli_action is not None:
+        actions.append(cli_action)
+
     return SelectionConfig(
         root=root,
         output_path=output_path,
         ignore_gitignore=ignore_gitignore,
-        repocat_spec=spec,
-        repocat_sources=effective_sources,
+        repocat_actions=tuple(actions),
     )
 
 
@@ -100,7 +117,7 @@ def select_candidate(config: SelectionConfig, candidate: CandidateFile) -> Selec
     if hard_decision is not None:
         return hard_decision
 
-    repocat_decision = evaluate_repocat_layer(config, path)
+    repocat_decision = evaluate_repocat_layer(config, path, candidate.active_gitignores)
     if repocat_decision is not None:
         return repocat_decision
 
@@ -138,13 +155,37 @@ def hard_exclusion_decision(
     return None
 
 
-def evaluate_repocat_layer(config: SelectionConfig, root_relative_path: str) -> SelectionDecision | None:
-    """Evaluate the higher-precedence repocat layer."""
-    result = config.repocat_spec.check_file(root_relative_path)
+def evaluate_repocat_layer(
+    config: SelectionConfig,
+    root_relative_path: str,
+    active_gitignores: tuple[ActiveGitignoreSpec, ...],
+) -> SelectionDecision | None:
+    """Evaluate the ordered higher-precedence repocat layer."""
+    decision: SelectionDecision | None = None
+
+    for action in config.repocat_actions:
+        if isinstance(action, RepocatPatternAction):
+            pattern_decision = evaluate_repocat_pattern_action(action, root_relative_path)
+            if pattern_decision is not None:
+                decision = pattern_decision
+        elif isinstance(action, RepocatGitignoreFilterAction):
+            filter_decision = evaluate_gitignore_filter(root_relative_path, active_gitignores)
+            if filter_decision is not None:
+                decision = filter_decision
+
+    return decision
+
+
+def evaluate_repocat_pattern_action(
+    action: RepocatPatternAction,
+    root_relative_path: str,
+) -> SelectionDecision | None:
+    """Evaluate one contiguous repocat pattern chunk."""
+    result = action.spec.check_file(root_relative_path)
     if result.include is None:
         return None
 
-    source = _source_at(config.repocat_sources, result.index)
+    source = _source_at(action.sources, result.index)
     if result.include is True:
         return SelectionDecision(
             DecisionKind.EXCLUDE,
@@ -158,6 +199,23 @@ def evaluate_repocat_layer(config: SelectionConfig, root_relative_path: str) -> 
         root_relative_path,
         f"matched repocat include: {source.pattern}",
         source.origin,
+    )
+
+
+def evaluate_gitignore_filter(
+    root_relative_path: str,
+    active_gitignores: tuple[ActiveGitignoreSpec, ...],
+) -> SelectionDecision | None:
+    """Apply .gitignore as an exclusion-only ordered repocat action."""
+    decision = evaluate_gitignore_layer(root_relative_path, active_gitignores)
+    if decision is None or decision.kind is not DecisionKind.EXCLUDE:
+        return None
+
+    return SelectionDecision(
+        DecisionKind.EXCLUDE,
+        root_relative_path,
+        decision.reason.replace("matched .gitignore:", "matched gitignore filter:", 1),
+        decision.source,
     )
 
 
@@ -203,6 +261,17 @@ def _source_at(sources: tuple[RuleSource, ...], index: int | None) -> RuleSource
     if index is None or index < 0 or index >= len(sources):
         return RuleSource("<unknown>", "<unknown>")
     return sources[index]
+
+
+def _make_pattern_action(
+    sources: tuple[RuleSource, ...],
+    description: str,
+) -> RepocatPatternAction | None:
+    """Compile sources into a repocat pattern action if any source is effective."""
+    spec, effective_sources = _compile_gitignore_sources(sources, description)
+    if not effective_sources:
+        return None
+    return RepocatPatternAction(spec=spec, sources=effective_sources)
 
 
 def _compile_gitignore_sources(

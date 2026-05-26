@@ -8,8 +8,8 @@ specification:
 - `repocat.paths` owns root-relative POSIX normalization, output path
   resolution, containment checks, and gitignore-relative path conversion.
 - `repocat.selection` loads `.repocatignore`, caches `.gitignore` files, and
-  evaluates hard exclusions, repocat rules, and gitignore rules in precedence
-  order.
+  evaluates hard exclusions, ordered repocat actions, and gitignore rules in
+  precedence order.
 - `repocat.traversal` walks the invocation root, prunes any directory named
   `.git`, maintains active nested `.gitignore` specs, and applies symlink
   traversal policy.
@@ -21,8 +21,13 @@ specification:
 
 The CLI uses a single Typer command with manual dispatch for the `check` command
 token. This keeps the public syntax as `repocat check FILE...` while preserving
-the exact argv order of repeated `--include` and `--exclude` options before
-building the repocat rule layer.
+the exact argv order of repeated `--include`, `--exclude`, and
+`--gitignore-filter` options before building the repocat rule layer.
+
+The repocat layer is represented as ordered actions. `.repocatignore` is compiled
+as the first pattern chunk, contiguous CLI include/exclude rules are compiled as
+additional chunks, and `-g` / `--gitignore-filter` inserts an exclusion-only
+gitignore filter action between those chunks.
 
 Hard exclusion policy treats every directory named `.git` under the invocation
 root as non-capturable, including nested repositories such as

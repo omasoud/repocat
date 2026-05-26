@@ -157,6 +157,8 @@ def parse_main_args(argv: Sequence[str]) -> CliOptions:
             output = _require_equals_value(token, "--output")
         elif token == "--ignore-gitignore":
             ignore_gitignore = True
+        elif token in ("-g", "--gitignore-filter"):
+            rules.append(CliRule("gitignore_filter"))
         elif token in ("-i", "--include"):
             index += 1
             rules.append(CliRule("include", _validate_include(_require_value(argv, index, token))))
@@ -205,6 +207,8 @@ def parse_check_args(argv: Sequence[str]) -> CheckOptions:
             break
         if token == "--ignore-gitignore":
             ignore_gitignore = True
+        elif token in ("-g", "--gitignore-filter"):
+            rules.append(CliRule("gitignore_filter"))
         elif token in ("-i", "--include"):
             index += 1
             rules.append(CliRule("include", _validate_include(_require_value(argv, index, token))))
@@ -284,6 +288,7 @@ def print_main_help() -> None:
             ("--ignore-gitignore", "Disable .gitignore handling."),
             ("-i, --include PATTERN", "Force-include a gitignore-style pattern."),
             ("-e, --exclude PATTERN", "Exclude a gitignore-style pattern."),
+            ("-g, --gitignore-filter", "Apply .gitignore as an ordered exclusion-only filter."),
             ("--list-files", "List captured files only."),
         ],
         commands=[("check [OPTIONS] FILE...", "Report whether paths would be captured.")],
@@ -299,6 +304,7 @@ def print_check_help() -> None:
             ("--ignore-gitignore", "Disable .gitignore handling."),
             ("-i, --include PATTERN", "Force-include a gitignore-style pattern."),
             ("-e, --exclude PATTERN", "Exclude a gitignore-style pattern."),
+            ("-g, --gitignore-filter", "Apply .gitignore as an ordered exclusion-only filter."),
         ],
         commands=[],
     )

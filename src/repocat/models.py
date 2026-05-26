@@ -10,7 +10,7 @@ from typing import Literal
 from pathspec import GitIgnoreSpec
 
 
-RuleKind = Literal["include", "exclude"]
+RuleKind = Literal["include", "exclude", "gitignore_filter"]
 OutputFormat = Literal["cxml", "markdown"]
 
 
@@ -19,7 +19,7 @@ class CliRule:
     """A command-line repocat rule in original argv order."""
 
     kind: RuleKind
-    pattern: str
+    pattern: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,8 +57,25 @@ class SelectionConfig:
     root: Path
     output_path: Path | None
     ignore_gitignore: bool
-    repocat_spec: GitIgnoreSpec
-    repocat_sources: tuple[RuleSource, ...]
+    repocat_actions: tuple["RepocatAction", ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RepocatPatternAction:
+    """A contiguous compiled chunk of repocat include/exclude patterns."""
+
+    spec: GitIgnoreSpec
+    sources: tuple[RuleSource, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RepocatGitignoreFilterAction:
+    """An ordered exclusion-only gitignore filter action."""
+
+    origin: str = "command line"
+
+
+RepocatAction = RepocatPatternAction | RepocatGitignoreFilterAction
 
 
 class DecisionKind(Enum):

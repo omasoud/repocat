@@ -150,3 +150,18 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] QA-10 Keep diagnostic source metadata aligned across blank and comment ignore-file lines.
 - [x] QA-11 Test `.repocatignore` invalid UTF-8 as a fatal error.
 
+## Gitignore Filter Rule
+
+- [x] GF-01 Update the specification with `-g` / `--gitignore-filter` semantics, sequence examples, and exclusion-only behavior.
+- [x] GF-02 Replace the flat repocat-layer `GitIgnoreSpec` with ordered repocat actions that can interleave pattern chunks and gitignore filters.
+- [x] GF-03 Parse `-g` / `--gitignore-filter` for the main command and `check` while preserving argv order with `--include` and `--exclude`.
+- [x] GF-04 Evaluate gitignore filter actions against the active `.gitignore` stack, excluding ignored files without ever including files.
+- [x] GF-05 Preserve default `.gitignore` behavior when no repocat action has an opinion.
+- [x] GF-06 Add diagnostics for gitignore filter exclusions.
+- [x] GF-07 Test `repocat -e '*' -i 'tests/**' -g --list-files` includes only non-gitignored files under `tests/`.
+- [x] GF-08 Test `-g` before a later include allows the later include to force-capture an ignored file.
+- [x] GF-09 Test `-g` after an include can be followed by a later include for a specific ignored fixture.
+- [x] GF-10 Test `.gitignore` negations do not cause `-g` to re-include files outside the intended repocat scope.
+- [x] GF-11 Test `check` reports gitignore filter exclusion reasons and exit codes correctly.
+- [x] GF-12 Update README and architecture notes for the new ordered gitignore filter rule.
+

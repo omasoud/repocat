@@ -58,10 +58,11 @@ Use repocat-specific include and exclude rules:
 repocat --include "tmp/keep.txt"
 repocat --exclude "secrets.env"
 repocat --include "*" --exclude "secrets.env"
+repocat --exclude "*" --include "tests/**" --gitignore-filter --list-files
 ```
 
-`--include` and `--exclude` are repeatable and order-sensitive. Later repocat
-rules override earlier repocat rules.
+`--include`, `--exclude`, and `--gitignore-filter` are repeatable and
+order-sensitive. Later repocat rules override earlier repocat rules.
 
 ## Rule Precedence
 
@@ -73,9 +74,13 @@ matched.
 Precedence:
 
 1. Hard exclusions always win.
-2. Root `.repocatignore` and CLI rules decide next.
+2. Root `.repocatignore` and ordered CLI rules decide next.
 3. `.gitignore` decides only when repocat has no matching rule.
 4. Files are included by default.
+
+`-g` / `--gitignore-filter` applies `.gitignore` as an exclusion-only filter at
+that point in the ordered CLI rule sequence. It can remove ignored files from a
+previous include, but it never includes files by itself.
 
 Hard exclusions are:
 

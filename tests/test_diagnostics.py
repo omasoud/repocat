@@ -87,6 +87,21 @@ def test_comment_lines_do_not_shift_gitignore_diagnostic_pattern(runner, monkeyp
     assert "matched .gitignore: ignored.txt" in result.stdout
 
 
+def test_check_reports_gitignore_filter_exclusion(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "tests/ignored.txt\n")
+    write_text(tmp_path, "tests/ignored.txt")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        ["check", "-e", "*", "-i", "tests/**", "-g", "tests/ignored.txt"],
+    )
+
+    assert result.exit_code == 1
+    assert "EXCLUDED  tests/ignored.txt  matched gitignore filter: tests/ignored.txt" in result.stdout
+
+
 def test_check_absolute_path_outside_root_is_excluded(runner, monkeypatch, tmp_path: Path) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside.txt"
     outside.write_text("outside\n", encoding="utf-8")
