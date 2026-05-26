@@ -28,6 +28,7 @@ class CliOptions:
 
     output_format: OutputFormat
     output_path: Path | None
+    allow_stdout: bool
     ignore_gitignore: bool
     cli_rules: tuple[CliRule, ...]
     list_files: bool

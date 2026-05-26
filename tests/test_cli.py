@@ -86,6 +86,7 @@ def test_output_paths_support_absolute_inside_and_outside_root(runner, monkeypat
         (["--exclude="], "--exclude requires a non-empty value"),
         (["--output="], "--output requires a non-empty value"),
         (["--exclude", "!secret.txt"], "--exclude patterns must not start with '!'"),
+        (["--stdout", "--output", "prompt.xml"], "--stdout cannot be combined with --output"),
     ],
 )
 def test_main_usage_errors(runner, monkeypatch, tmp_path: Path, args: list[str], message: str) -> None:
@@ -93,6 +94,50 @@ def test_main_usage_errors(runner, monkeypatch, tmp_path: Path, args: list[str],
 
     assert result.exit_code == 1
     assert message in result.output
+
+
+def test_interactive_stdout_requires_explicit_stdout(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "main.py", "print('hi')\n")
+    monkeypatch.setattr("repocat.cli._stdout_is_interactive", lambda: True)
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, [])
+
+    assert result.exit_code == 1
+    assert "repocat captures the current directory and writes prompt output to stdout." in result.stdout
+    assert "repocat --stdout" in result.stdout
+    assert "<documents>" not in result.stdout
+
+
+def test_stdout_flag_allows_interactive_stdout_capture(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "main.py", "print('hi')\n")
+    monkeypatch.setattr("repocat.cli._stdout_is_interactive", lambda: True)
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--stdout"])
+
+    assert result.exit_code == 0
+    assert result.stdout.startswith("<documents>\n")
+    assert "<source>main.py</source>" in result.stdout
+
+
+def test_non_interactive_stdout_allows_bare_capture(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "main.py", "print('hi')\n")
+    monkeypatch.setattr("repocat.cli._stdout_is_interactive", lambda: False)
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, [])
+
+    assert result.exit_code == 0
+    assert result.stdout.startswith("<documents>\n")
+    assert "<source>main.py</source>" in result.stdout
+
+
+def test_interactive_stdout_guard_does_not_block_list_files(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "main.py", "print('hi')\n")
+    monkeypatch.setattr("repocat.cli._stdout_is_interactive", lambda: True)
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--list-files"])
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["main.py"]
 
 
 def test_repeated_include_exclude_order_is_preserved(runner, monkeypatch, tmp_path: Path) -> None:

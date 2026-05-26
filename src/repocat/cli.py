@@ -105,6 +105,10 @@ def main_command(ctx: typer.Context) -> None:
 def run_main(argv: Sequence[str]) -> int:
     """Run the main capture mode with already-parsed raw arguments."""
     options = parse_main_args(argv)
+    if _should_block_interactive_stdout(options):
+        print_interactive_stdout_guidance()
+        return 1
+
     root = Path.cwd().resolve()
     output_path = resolve_output_path(root, str(options.output_path) if options.output_path else None)
     config = build_selection_config(root, output_path, options.ignore_gitignore, options.cli_rules)
@@ -150,6 +154,7 @@ def parse_main_args(argv: Sequence[str]) -> CliOptions:
     cxml = False
     markdown = False
     output: str | None = None
+    allow_stdout = False
     ignore_gitignore = False
     list_files = False
     rules: list[CliRule] = []
@@ -166,6 +171,8 @@ def parse_main_args(argv: Sequence[str]) -> CliOptions:
             output = _require_value(argv, index, token)
         elif token.startswith("--output="):
             output = _require_equals_value(token, "--output")
+        elif token == "--stdout":
+            allow_stdout = True
         elif token == "--ignore-gitignore":
             ignore_gitignore = True
         elif token in ("-g", "--gitignore-filter"):
@@ -193,11 +200,14 @@ def parse_main_args(argv: Sequence[str]) -> CliOptions:
         raise UsageError("--cxml and --markdown are mutually exclusive")
     if list_files and (cxml or markdown or output is not None):
         raise UsageError("--list-files cannot be combined with output format options or --output")
+    if allow_stdout and output is not None:
+        raise UsageError("--stdout cannot be combined with --output")
 
     output_format: OutputFormat = "markdown" if markdown else "cxml"
     return CliOptions(
         output_format=output_format,
         output_path=Path(output) if output is not None else None,
+        allow_stdout=allow_stdout,
         ignore_gitignore=ignore_gitignore,
         cli_rules=tuple(rules),
         list_files=list_files,
@@ -230,7 +240,7 @@ def parse_check_args(argv: Sequence[str]) -> CheckOptions:
             rules.append(CliRule("exclude", _validate_exclude(_require_value(argv, index, token))))
         elif token.startswith("--exclude="):
             rules.append(CliRule("exclude", _validate_exclude(_require_equals_value(token, "--exclude"))))
-        elif token in ("-c", "--cxml", "-m", "--markdown", "-o", "--output", "--list-files"):
+        elif token in ("-c", "--cxml", "-m", "--markdown", "-o", "--output", "--list-files", "--stdout"):
             raise UsageError(f"Unsupported check option: {token}")
         elif token in ("-h", "--help"):
             print_check_help()
@@ -287,6 +297,35 @@ def _validate_exclude(pattern: str) -> str:
     return pattern
 
 
+def _should_block_interactive_stdout(options: CliOptions) -> bool:
+    """Return whether prompt output would be dumped to an interactive terminal."""
+    return (
+        not options.allow_stdout
+        and options.output_path is None
+        and not options.list_files
+        and _stdout_is_interactive()
+    )
+
+
+def _stdout_is_interactive() -> bool:
+    """Return whether stdout appears to be an interactive terminal."""
+    return sys.stdout.isatty()
+
+
+def print_interactive_stdout_guidance() -> None:
+    """Print guidance instead of dumping prompt output into an interactive terminal."""
+    typer.echo("repocat captures the current directory and writes prompt output to stdout.")
+    typer.echo("")
+    typer.echo("To preview files:")
+    typer.echo("  repocat --list-files")
+    typer.echo("")
+    typer.echo("To write output:")
+    typer.echo("  repocat --output prompt.xml")
+    typer.echo("")
+    typer.echo("To print directly to this terminal anyway:")
+    typer.echo("  repocat --stdout")
+
+
 def print_main_help() -> None:
     """Print rich-formatted main help."""
     _print_rich_help(
@@ -296,6 +335,7 @@ def print_main_help() -> None:
             ("-c, --cxml", "Render Claude XML-style output (default)."),
             ("-m, --markdown", "Render Markdown fenced code blocks."),
             ("-o, --output FILE", "Write output to FILE."),
+            ("--stdout", "Allow prompt output directly to an interactive terminal."),
             ("--ignore-gitignore", "Disable .gitignore handling."),
             ("-i, --include PATTERN", "Force-include a gitignore-style pattern."),
             ("-e, --exclude PATTERN", "Exclude a gitignore-style pattern."),

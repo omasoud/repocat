@@ -16,16 +16,25 @@ project.
 
 ## Usage
 
-Capture the current directory as Claude XML-style prompt markup:
+By default, `repocat` writes prompt output to stdout when stdout is redirected
+or piped:
 
 ```bash
-repocat
+repocat > prompt.xml
+repocat | pbcopy
+```
+
+When stdout is an interactive terminal, bare `repocat` prints guidance instead
+of dumping file contents. To print directly to the terminal anyway:
+
+```bash
+repocat --stdout
 ```
 
 Render Markdown fenced code blocks instead:
 
 ```bash
-repocat --markdown
+repocat --markdown > prompt.md
 ```
 
 Write output to a UTF-8 file. The output file is excluded from capture:

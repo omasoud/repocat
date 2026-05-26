@@ -17,12 +17,19 @@ specification:
 - `repocat.rendering` renders Claude XML-style output and Markdown output.
 - `repocat.diagnostics` implements `--list-files` membership reuse and
   `check FILE...` result formatting.
-- `repocat.cli` provides the Typer entrypoint and validation.
+- `repocat.cli` provides the Typer entrypoint, validation, rich help, and the
+  interactive stdout guard.
 
 The CLI uses a single Typer command with manual dispatch for the `check` command
 token. This keeps the public syntax as `repocat check FILE...` while preserving
 the exact argv order of repeated `--include`, `--exclude`, and
 `--gitignore-filter` options before building the repocat rule layer.
+
+Normal render mode checks stdout before traversal. If output would be written to
+an interactive terminal without `--stdout`, the CLI prints guidance and exits
+without walking or reading the repository. Redirected or piped stdout continues
+to receive prompt output by default, and `--list-files` is not guarded because it
+prints only paths.
 
 The repocat layer is represented as ordered actions. `.repocatignore` is compiled
 as the first pattern chunk, contiguous CLI include/exclude rules are compiled as

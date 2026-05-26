@@ -12,6 +12,7 @@ The v1 goal is a deterministic CLI repository capture tool that:
 - respects nested `.gitignore` files by default;
 - reads and writes UTF-8 only;
 - renders Claude XML-style output by default, with Markdown as an option;
+- avoids dumping prompt output to an interactive terminal unless `--stdout` is explicit;
 - supports `--list-files` and `check FILE...` diagnostics;
 - has focused unit and CLI coverage for selection precedence, traversal, rendering, and diagnostics.
 
@@ -165,4 +166,14 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] GF-11 Test `check` reports gitignore filter exclusion reasons and exit codes correctly.
 - [x] GF-12 Update README and architecture notes for the new ordered gitignore filter rule.
 - [x] GF-13 Document and test that `--ignore-gitignore` makes `--gitignore-filter` a no-op.
+
+## Interactive Stdout Guard
+
+- [x] TTY-01 Add `--stdout` as an explicit opt-in for rendered prompt output to an interactive terminal.
+- [x] TTY-02 Detect interactive stdout before traversal and print guidance instead of rendering when `--stdout` is absent.
+- [x] TTY-03 Preserve normal capture behavior when stdout is redirected or piped.
+- [x] TTY-04 Keep `--list-files` available on interactive terminals because it previews paths without printing file contents.
+- [x] TTY-05 Reject the ambiguous `--stdout --output FILE` combination.
+- [x] TTY-06 Update README and implementation specification for the stdout safety contract.
+- [x] TTY-07 Add CLI tests for interactive guard, explicit `--stdout`, non-interactive stdout, and list mode.
 

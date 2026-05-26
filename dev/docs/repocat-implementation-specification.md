@@ -108,6 +108,12 @@ repocat [OPTIONS]
 
 The main command captures files and renders them to stdout or to a file.
 
+If `--output` is not specified, rendered prompt output is written to stdout only
+when stdout is redirected or piped, or when `--stdout` is supplied explicitly.
+When stdout is an interactive terminal and `--stdout` is not supplied, the
+command should print short guidance and exit without traversing or rendering the
+repository.
+
 ### 4.1.1 Format Options
 
 ```bash
@@ -138,7 +144,40 @@ The output file is always excluded from capture, regardless of ignore/include ru
 
 The output file path is resolved relative to the invocation root unless an absolute path is supplied. The resolved output file must be treated as a hard exclusion if it is inside the invocation root. If the output path is outside the invocation root, it is not traversable and therefore does not need to be excluded from traversal, but it still must be opened and written as UTF-8.
 
-### 4.1.3 Ignore Behavior
+### 4.1.3 Stdout Option
+
+```bash
+--stdout
+```
+
+Allow rendered prompt output to be written directly to an interactive terminal.
+
+This option is not needed when stdout is redirected or piped:
+
+```bash
+repocat > prompt.xml
+repocat | pbcopy
+```
+
+Without `--stdout`, an interactive terminal invocation such as bare `repocat`
+should print guidance similar to:
+
+```text
+repocat captures the current directory and writes prompt output to stdout.
+
+To preview files:
+  repocat --list-files
+
+To write output:
+  repocat --output prompt.xml
+
+To print directly to this terminal anyway:
+  repocat --stdout
+```
+
+`--stdout` must not be combined with `--output`.
+
+### 4.1.4 Ignore Behavior
 
 ```bash
 --ignore-gitignore
@@ -153,7 +192,7 @@ When this option is set:
 - `-g` / `--gitignore-filter` actions have no effect because no `.gitignore` files are loaded;
 - the repocat layer and hard exclusions still apply.
 
-### 4.1.4 Include and Exclude Rules
+### 4.1.5 Include and Exclude Rules
 
 ```bash
 -i, --include <pattern>
@@ -243,7 +282,7 @@ Includes tests, removes gitignored files, then force-includes one ignored fixtur
 
 The gitignore filter must not be treated as full `.gitignore` decision insertion. `.gitignore` negations can produce include decisions, but `-g` must not re-include files by itself.
 
-### 4.1.5 List Mode
+### 4.1.6 List Mode
 
 ```bash
 --list-files
@@ -872,7 +911,15 @@ example
 
 ## 11.1 Stdout
 
-If `--output` is not specified, prompt output is written to stdout as UTF-8 text.
+If `--output` is not specified, prompt output is written to stdout as UTF-8 text
+when either:
+
+- stdout is redirected or piped;
+- `--stdout` is supplied explicitly.
+
+If stdout is an interactive terminal and `--stdout` is not supplied, the command
+prints guidance instead of prompt output and exits without traversing the
+repository.
 
 Warnings are written to stderr.
 
@@ -993,7 +1040,7 @@ not a regular file
 
 ```text
 0  success
-1  usage error or fatal runtime error
+1  usage error, fatal runtime error, or interactive stdout guard
 ```
 
 Read warnings for individual files do not fail the command in v1.
@@ -1105,14 +1152,15 @@ class ActiveGitignoreSpec:
 
 1. Record invocation root as `Path.cwd().resolve()`.
 2. Parse CLI arguments.
-3. Resolve `--output`, if present.
-4. Build hard-exclusion context:
+3. If normal render mode would write prompt output to an interactive terminal and `--stdout` is not set, print guidance and exit without traversal.
+4. Resolve `--output`, if present.
+5. Build hard-exclusion context:
    - `.git/` under invocation root;
    - resolved output file if it is under invocation root.
-5. Load `.repocatignore` from invocation root if present.
-6. Append CLI `--include` / `--exclude` patterns in argv order.
-7. Compile the combined repocat rule list using `GitIgnoreSpec.from_lines()`.
-8. Execute requested mode:
+6. Load `.repocatignore` from invocation root if present.
+7. Append CLI `--include` / `--exclude` patterns in argv order.
+8. Compile the combined repocat rule list using `GitIgnoreSpec.from_lines()`.
+9. Execute requested mode:
    - normal render;
    - `--list-files`;
    - `check`.
@@ -1251,7 +1299,7 @@ The exact warning format may vary, but it must identify the skipped file.
 ## 16.1 Default Capture
 
 ```bash
-repocat
+repocat > prompt.xml
 ```
 
 Behavior:
@@ -1259,7 +1307,11 @@ Behavior:
 - runs at cwd;
 - reads `.repocatignore` from cwd if present;
 - respects `.gitignore` files at cwd or below;
-- outputs Claude XML-style content to stdout.
+- outputs Claude XML-style content to redirected stdout.
+
+When stdout is an interactive terminal, bare `repocat` prints guidance instead
+of rendering prompt output. Use `repocat --stdout` to intentionally print prompt
+output directly to the terminal.
 
 ## 16.2 Markdown Output
 
@@ -1460,6 +1512,9 @@ Markdown tests:
 Tests must cover:
 
 - `repocat` default behavior;
+- `repocat` blocks prompt output when stdout is an interactive terminal;
+- `repocat --stdout` allows prompt output to an interactive terminal;
+- `repocat` allows prompt output when stdout is redirected or piped;
 - `repocat --cxml`;
 - `repocat --markdown`;
 - mutually exclusive format options;
@@ -1493,6 +1548,10 @@ Additional explanation:
 Rules are order-sensitive. Later repocat rules override earlier repocat rules.
 
 `--ignore-gitignore` disables `.gitignore` entirely.
+
+Prompt output is written to stdout by default only when stdout is redirected or
+piped. Use `--stdout` to intentionally print prompt output directly to an
+interactive terminal.
 ```
 
 Example:
@@ -1513,7 +1572,8 @@ Capture all traversable UTF-8 files under the current directory except secrets.e
 
 A v1 implementation is complete when:
 
-- `repocat` captures files from cwd and renders default CXML-style output;
+- `repocat` captures files from cwd and renders default CXML-style output when stdout is redirected or `--stdout` is supplied;
+- bare `repocat` on an interactive terminal prints guidance instead of rendering prompt output;
 - `--markdown` renders Markdown fenced code blocks;
 - `--output` writes UTF-8 output to a file and excludes that file from capture;
 - `.repocatignore` at cwd is honored;
