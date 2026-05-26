@@ -67,9 +67,22 @@ order-sensitive. Later repocat rules override earlier repocat rules.
 ## Rule Precedence
 
 By default, repocat respects `.gitignore`, but `.repocatignore` and command-line
-`--include` / `--exclude` rules are stronger. If a repocat rule matches a file,
-that decision wins. `.gitignore` is only consulted for files that no repocat rule
-matched.
+rules are evaluated in a higher-precedence repocat layer.
+
+Most repocat rules decide directly:
+
+- `--exclude PATTERN` excludes matching files.
+- `--include PATTERN` force-includes matching files, even if `.gitignore` would
+  otherwise ignore them.
+
+`--gitignore-filter` is the exception: it applies `.gitignore` as an
+exclusion-only filter at that point in the ordered CLI rule sequence. It can
+remove ignored files from a previous include, but it never includes files by
+itself.
+
+If the ordered repocat layer makes no decision for a file, normal `.gitignore`
+handling is applied. If `.gitignore` also makes no decision, the file is
+included.
 
 Precedence:
 
@@ -78,9 +91,8 @@ Precedence:
 3. `.gitignore` decides only when repocat has no matching rule.
 4. Files are included by default.
 
-`-g` / `--gitignore-filter` applies `.gitignore` as an exclusion-only filter at
-that point in the ordered CLI rule sequence. It can remove ignored files from a
-previous include, but it never includes files by itself.
+When `--ignore-gitignore` is set, `--gitignore-filter` has no effect because no
+`.gitignore` files are loaded.
 
 Hard exclusions are:
 

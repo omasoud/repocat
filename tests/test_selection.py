@@ -197,6 +197,22 @@ def test_gitignore_filter_does_not_include_from_gitignore_negation(runner, monke
     assert listed_paths(result.stdout) == ["tests/test_cli.py"]
 
 
+def test_gitignore_filter_is_noop_when_ignore_gitignore_is_set(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, ".gitignore", "tests/ignored.txt\n")
+    write_text(tmp_path, "tests/ignored.txt")
+    write_text(tmp_path, "tests/visible.txt")
+
+    result = invoke_repocat(
+        runner,
+        monkeypatch,
+        tmp_path,
+        ["--ignore-gitignore", "-e", "*", "-i", "tests/**", "-g", "--list-files"],
+    )
+
+    assert result.exit_code == 0
+    assert listed_paths(result.stdout) == ["tests/ignored.txt", "tests/visible.txt"]
+
+
 def test_broad_include_cannot_override_hard_exclusions(runner, monkeypatch, tmp_path: Path) -> None:
     write_text(tmp_path, ".git/config", "secret\n")
     write_text(tmp_path, "vendor/repo/.git/config", "nested secret\n")

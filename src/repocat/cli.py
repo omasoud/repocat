@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Sequence
 
 import typer
+from rich.console import Console
+from rich.highlighter import RegexHighlighter
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from typer.rich_utils import _get_rich_console, highlighter
 
 from repocat.diagnostics import check_paths, format_check_result
 from repocat.models import CheckOptions, CliOptions, CliRule, OutputFormat
@@ -28,6 +29,16 @@ app = typer.Typer(
 
 class UsageError(Exception):
     """A command-line usage error."""
+
+
+class OptionHighlighter(RegexHighlighter):
+    """Highlight CLI options and metavars in help text."""
+
+    highlights = [
+        r"(^|\W)(?P<option>\-\-[\w\-]+)(?![a-zA-Z0-9])",
+        r"(^|\W)(?P<switch>\-\w+)(?![a-zA-Z0-9])",
+        r"(?P<metavar>\b[A-Z][A-Z0-9_]*\b)",
+    ]
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -316,16 +327,17 @@ def _print_rich_help(
     options: list[tuple[str, str]],
     commands: list[tuple[str, str]],
 ) -> None:
-    """Print help using Typer's Rich console and highlighter."""
-    console = _get_rich_console()
-    console.print(highlighter(usage), style="bold yellow")
+    """Print help using Rich formatting."""
+    option_highlighter = OptionHighlighter()
+    console = Console(highlighter=option_highlighter)
+    console.print(option_highlighter(usage), style="bold yellow")
     console.print(Text(description))
 
     options_table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
     options_table.add_column("Option", style="bold cyan", no_wrap=True)
     options_table.add_column("Description")
     for option, help_text in options:
-        options_table.add_row(highlighter(option), help_text)
+        options_table.add_row(option_highlighter(option), help_text)
     console.print(Panel(options_table, title="Options", title_align="left", border_style="dim"))
 
     if commands:

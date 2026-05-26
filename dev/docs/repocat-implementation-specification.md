@@ -150,6 +150,7 @@ When this option is set:
 
 - `.gitignore` files are not loaded;
 - `.gitignore` files do not affect selection;
+- `-g` / `--gitignore-filter` actions have no effect because no `.gitignore` files are loaded;
 - the repocat layer and hard exclusions still apply.
 
 ### 4.1.4 Include and Exclude Rules
@@ -201,6 +202,8 @@ If the final `.gitignore` result is "not ignored" or "no match," the current dec
 The gitignore filter never includes a file by itself. It can only exclude files.
 
 This is useful when a repocat include rule selects a subtree, but the user still wants `.gitignore` exclusions inside that subtree to apply.
+
+When `--ignore-gitignore` is set, `--gitignore-filter` has no effect because no `.gitignore` files are loaded.
 
 Recommended example:
 

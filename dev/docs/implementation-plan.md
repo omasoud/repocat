@@ -164,4 +164,5 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] GF-10 Test `.gitignore` negations do not cause `-g` to re-include files outside the intended repocat scope.
 - [x] GF-11 Test `check` reports gitignore filter exclusion reasons and exit codes correctly.
 - [x] GF-12 Update README and architecture notes for the new ordered gitignore filter rule.
+- [x] GF-13 Document and test that `--ignore-gitignore` makes `--gitignore-filter` a no-op.
 
