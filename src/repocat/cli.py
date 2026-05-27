@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Sequence
 
@@ -314,6 +315,8 @@ def _stdout_is_interactive() -> bool:
 
 def print_interactive_stdout_guidance() -> None:
     """Print guidance instead of dumping prompt output into an interactive terminal."""
+    typer.echo(f"repocat {get_version()}")
+    typer.echo("")
     typer.echo("repocat captures the current directory and writes prompt output to stdout.")
     typer.echo("")
     typer.echo("To preview files:")
@@ -324,13 +327,27 @@ def print_interactive_stdout_guidance() -> None:
     typer.echo("")
     typer.echo("To print directly to this terminal anyway:")
     typer.echo("  repocat --stdout")
+    typer.echo("")
+    typer.echo("To see help:")
+    typer.echo("  repocat -h")
+
+
+def get_version() -> str:
+    """Return the installed package version."""
+    try:
+        return version("repocat")
+    except PackageNotFoundError:
+        return "0.0.0"
 
 
 def print_main_help() -> None:
     """Print rich-formatted main help."""
     _print_rich_help(
         usage="Usage: repocat [OPTIONS]",
-        description="Capture the current working directory.",
+        description=(
+            "Capture the current working directory into prompt-friendly text. "
+            "Redirect or pipe stdout, write with --output, or use --stdout to print directly."
+        ),
         options=[
             ("-c, --cxml", "Render Claude XML-style output (default)."),
             ("-m, --markdown", "Render Markdown fenced code blocks."),
@@ -343,6 +360,21 @@ def print_main_help() -> None:
             ("--list-files", "List captured files only."),
         ],
         commands=[("check [OPTIONS] FILE...", "Report whether paths would be captured.")],
+        notes=[
+            "`-e PATTERN` excludes matching files.",
+            "`-i PATTERN` force-includes matching files, even when `.gitignore` would ignore them.",
+            "`-g` / `--gitignore-filter` applies `.gitignore` as an exclusion-only filter at that point.",
+            "Selection rules run in the exact order supplied; later matching rules replace earlier decisions.",
+            "If no repocat rule decides a file, normal `.gitignore` handling applies, then default include.",
+        ],
+        examples=[
+            "repocat --list-files",
+            "repocat --output prompt.xml",
+            "repocat --markdown > prompt.md",
+            "repocat -e '*' -i 'tests/**' -g --list-files",
+            "repocat -e '*' -i 'tests/**' -g -i 'tests/fixtures/ignored-but-needed.txt'",
+            "repocat check README.md src/main.py",
+        ],
     )
 
 
@@ -358,6 +390,16 @@ def print_check_help() -> None:
             ("-g, --gitignore-filter", "Apply .gitignore as an ordered exclusion-only filter."),
         ],
         commands=[],
+        notes=[
+            "`check` uses the same ordered selection rules as capture mode.",
+            "`-g` can exclude ignored files after an include, but it never includes files by itself.",
+            "Use `--` before a dash-prefixed filename.",
+        ],
+        examples=[
+            "repocat check README.md src/main.py",
+            "repocat check -e '*' -i 'tests/**' -g tests/test_cli.py",
+            "repocat check -- -weird-filename.txt",
+        ],
     )
 
 
@@ -366,10 +408,13 @@ def _print_rich_help(
     description: str,
     options: list[tuple[str, str]],
     commands: list[tuple[str, str]],
+    notes: list[str],
+    examples: list[str],
 ) -> None:
     """Print help using Rich formatting."""
     option_highlighter = OptionHighlighter()
     console = Console(highlighter=option_highlighter)
+    console.print(Text(f"repocat {get_version()}"), style="bold")
     console.print(option_highlighter(usage), style="bold yellow")
     console.print(Text(description))
 
@@ -387,3 +432,16 @@ def _print_rich_help(
         for command, help_text in commands:
             commands_table.add_row(command, help_text)
         console.print(Panel(commands_table, title="Commands", title_align="left", border_style="dim"))
+
+    notes_table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+    notes_table.add_column("Rule")
+    for note in notes:
+        notes_table.add_row(option_highlighter(note))
+    console.print(Panel(notes_table, title="Rule Order", title_align="left", border_style="dim"))
+
+    examples_table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+    examples_table.add_column("Example", style="bold cyan")
+    for example in examples:
+        examples_table.add_row(option_highlighter(example))
+    console.print(Panel(examples_table, title="Examples", title_align="left", border_style="dim"))
+    console.print(Panel("https://github.com/omasoud/repocat", title="Project", title_align="left", border_style="dim"))

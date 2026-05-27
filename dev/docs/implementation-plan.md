@@ -176,4 +176,13 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] TTY-05 Reject the ambiguous `--stdout --output FILE` combination.
 - [x] TTY-06 Update README and implementation specification for the stdout safety contract.
 - [x] TTY-07 Add CLI tests for interactive guard, explicit `--stdout`, non-interactive stdout, and list mode.
+- [x] TTY-08 Print the installed version and a `repocat -h` hint in interactive no-argument guidance.
+
+## Help Polish
+
+- [x] HELP-01 Show the installed version in rich help.
+- [x] HELP-02 Add rule-order notes explaining how `-i`, `-e`, and `-g` are interpreted.
+- [x] HELP-03 Add common usage examples to main and `check` help.
+- [x] HELP-04 Add the project URL `https://github.com/omasoud/repocat` to help output.
+- [x] HELP-05 Add CLI tests for expanded help content.
 

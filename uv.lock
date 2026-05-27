@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.14"
 
 [options]
-exclude-newer = "2026-05-24T01:58:51.2229794Z"
+exclude-newer = "2026-05-25T03:06:24.0602534Z"
 exclude-newer-span = "P2D"
 
 [[package]]
@@ -120,7 +120,7 @@ wheels = [
 
 [[package]]
 name = "repocat"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "pathspec" },

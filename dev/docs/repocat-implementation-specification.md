@@ -163,6 +163,8 @@ Without `--stdout`, an interactive terminal invocation such as bare `repocat`
 should print guidance similar to:
 
 ```text
+repocat 0.1.0
+
 repocat captures the current directory and writes prompt output to stdout.
 
 To preview files:
@@ -173,11 +175,29 @@ To write output:
 
 To print directly to this terminal anyway:
   repocat --stdout
+
+To see help:
+  repocat -h
 ```
 
 `--stdout` must not be combined with `--output`.
 
-### 4.1.4 Ignore Behavior
+### 4.1.4 Help
+
+```bash
+-h, --help
+```
+
+Show rich-formatted help. Main help should include:
+
+- the installed version;
+- option reference;
+- `check` subcommand reference;
+- rule-order explanation for `-i`, `-e`, and `-g`;
+- usage examples;
+- the project URL: `https://github.com/omasoud/repocat`.
+
+### 4.1.5 Ignore Behavior
 
 ```bash
 --ignore-gitignore
@@ -192,7 +212,7 @@ When this option is set:
 - `-g` / `--gitignore-filter` actions have no effect because no `.gitignore` files are loaded;
 - the repocat layer and hard exclusions still apply.
 
-### 4.1.5 Include and Exclude Rules
+### 4.1.6 Include and Exclude Rules
 
 ```bash
 -i, --include <pattern>
@@ -282,7 +302,7 @@ Includes tests, removes gitignored files, then force-includes one ignored fixtur
 
 The gitignore filter must not be treated as full `.gitignore` decision insertion. `.gitignore` negations can produce include decisions, but `-g` must not re-include files by itself.
 
-### 4.1.6 List Mode
+### 4.1.7 List Mode
 
 ```bash
 --list-files

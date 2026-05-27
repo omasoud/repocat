@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from repocat.cli import main as cli_main
+from repocat.cli import get_version, main as cli_main
 from conftest import invoke_repocat, listed_paths, write_text
 
 
@@ -103,8 +103,11 @@ def test_interactive_stdout_requires_explicit_stdout(runner, monkeypatch, tmp_pa
     result = invoke_repocat(runner, monkeypatch, tmp_path, [])
 
     assert result.exit_code == 1
+    assert f"repocat {get_version()}" in result.stdout
     assert "repocat captures the current directory and writes prompt output to stdout." in result.stdout
     assert "repocat --stdout" in result.stdout
+    assert "To see help:" in result.stdout
+    assert "repocat -h" in result.stdout
     assert "<documents>" not in result.stdout
 
 
@@ -160,9 +163,15 @@ def test_gitignore_filter_is_available_in_main_and_check_help(runner, monkeypatc
     check_help = invoke_repocat(runner, monkeypatch, tmp_path, ["check", "--help"])
 
     assert main_help.exit_code == 0
+    assert f"repocat {get_version()}" in main_help.stdout
     assert "-g, --gitignore-filter" in main_help.stdout
+    assert "Rule Order" in main_help.stdout
+    assert "Selection rules run in the exact order supplied" in main_help.stdout
+    assert "repocat -e '*' -i 'tests/**' -g --list-files" in main_help.stdout
+    assert "https://github.com/omasoud/repocat" in main_help.stdout
     assert check_help.exit_code == 0
     assert "-g, --gitignore-filter" in check_help.stdout
+    assert "Use `--` before a dash-prefixed filename." in check_help.stdout
 
 
 def test_check_usage_errors_exit_2(runner, monkeypatch, tmp_path: Path) -> None:

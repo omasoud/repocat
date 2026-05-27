@@ -4,6 +4,12 @@
 current working directory, selects UTF-8 files with deterministic ignore rules,
 and renders Claude XML-style output by default.
 
+`repocat` is inspired by
+[`files-to-prompt`](https://github.com/simonw/files-to-prompt), but it is not a
+fork. It works toward the same broad goal of turning project files into useful
+LLM prompt context with a different CLI UX, including ordered include/exclude
+rules, explicit interactive-stdout handling, and CXML output by default.
+
 ## Install
 
 ```bash
@@ -29,6 +35,12 @@ of dumping file contents. To print directly to the terminal anyway:
 
 ```bash
 repocat --stdout
+```
+
+For the full command reference, rule-order details, examples, and project link:
+
+```bash
+repocat -h
 ```
 
 Render Markdown fenced code blocks instead:
