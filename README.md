@@ -61,6 +61,8 @@ List the files that would be captured without rendering contents:
 repocat --list-files
 ```
 
+The list ends with a summary line such as `Total files: 12`.
+
 Check why specific files would or would not be captured:
 
 ```bash

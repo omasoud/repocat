@@ -310,6 +310,12 @@ The gitignore filter must not be treated as full `.gitignore` decision insertion
 
 List the files that would be captured, one root-relative path per line, then exit without rendering file contents.
 
+After the path list, print a final summary line:
+
+```text
+Total files: N
+```
+
 List mode uses the same traversal, hard exclusions, ignore handling, UTF-8 readability checks, symlink policy, and deterministic ordering as normal capture mode.
 
 Unreadable or non-UTF-8 files that would otherwise be selected are not listed as captured files. They should produce warnings on stderr.
@@ -989,9 +995,11 @@ README.md
 pyproject.toml
 src/main.py
 src/util.py
+Total files: 4
 ```
 
-The list must be sorted in the same order files would be rendered.
+The file path lines must be sorted in the same order files would be rendered.
+The final `Total files: N` line reports the number of listed files.
 
 ## 12.2 `check FILE...`
 
@@ -1433,6 +1441,7 @@ Result:
 README.md
 pyproject.toml
 src/main.py
+Total files: 3
 ```
 
 No file contents are printed.
@@ -1540,6 +1549,7 @@ Tests must cover:
 - mutually exclusive format options;
 - `repocat --output prompt.xml`;
 - `repocat --list-files`;
+- `repocat --list-files` prints a trailing total count;
 - invalid combination of `--list-files` with render/output options;
 - `repocat check FILE...`;
 - `check` exit code `0` when all files included;
@@ -1608,7 +1618,7 @@ A v1 implementation is complete when:
 - selected files are read as UTF-8;
 - non-UTF-8 or unreadable files are skipped with stderr warnings;
 - captured file order is deterministic;
-- `--list-files` reports exactly the files that would be captured;
+- `--list-files` reports exactly the files that would be captured, followed by a total count;
 - `check FILE...` reports capture decisions and uses the specified exit codes;
 - symlink policy is implemented;
 - test coverage exists for the precedence model, traversal behavior, renderers, diagnostics, and CLI validation.

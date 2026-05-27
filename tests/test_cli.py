@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from repocat.cli import get_version, main as cli_main
-from conftest import invoke_repocat, listed_paths, write_text
+from conftest import invoke_repocat, listed_paths, listed_total, write_text
 
 
 def test_default_and_explicit_formats(runner, monkeypatch, tmp_path: Path) -> None:
@@ -141,6 +141,17 @@ def test_interactive_stdout_guard_does_not_block_list_files(runner, monkeypatch,
 
     assert result.exit_code == 0
     assert listed_paths(result.stdout) == ["main.py"]
+    assert listed_total(result.stdout) == 1
+
+
+def test_list_files_prints_total_at_end(runner, monkeypatch, tmp_path: Path) -> None:
+    write_text(tmp_path, "b.txt")
+    write_text(tmp_path, "a.txt")
+
+    result = invoke_repocat(runner, monkeypatch, tmp_path, ["--list-files"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines() == ["a.txt", "b.txt", "Total files: 2"]
 
 
 def test_repeated_include_exclude_order_is_preserved(runner, monkeypatch, tmp_path: Path) -> None:
@@ -156,6 +167,7 @@ def test_repeated_include_exclude_order_is_preserved(runner, monkeypatch, tmp_pa
 
     assert result.exit_code == 0
     assert listed_paths(result.stdout) == ["keep.txt"]
+    assert listed_total(result.stdout) == 1
 
 
 def test_gitignore_filter_is_available_in_main_and_check_help(runner, monkeypatch, tmp_path: Path) -> None:

@@ -186,3 +186,9 @@ Follow the project guidance in `AGENT.md`: use Python, Typer for the CLI, `uv` f
 - [x] HELP-04 Add the project URL `https://github.com/omasoud/repocat` to help output.
 - [x] HELP-05 Add CLI tests for expanded help content.
 
+## List Files Count
+
+- [x] LIST-01 Print `Total files: N` after `--list-files` path output.
+- [x] LIST-02 Keep tests focused on path membership while separately asserting the total count.
+- [x] LIST-03 Update README and implementation specification for the trailing total line.
+

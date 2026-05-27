@@ -11,6 +11,8 @@ from typer.testing import CliRunner
 
 from repocat.cli import app
 
+TOTAL_FILES_PREFIX = "Total files: "
+
 
 @pytest.fixture
 def runner() -> CliRunner:
@@ -46,8 +48,16 @@ def write_bytes(root: Path, relative: str, content: bytes) -> Path:
 
 
 def listed_paths(output: str) -> list[str]:
-    """Return non-empty list output lines."""
-    return [line for line in output.splitlines() if line]
+    """Return path lines from ``--list-files`` output."""
+    return [line for line in output.splitlines() if line and not line.startswith(TOTAL_FILES_PREFIX)]
+
+
+def listed_total(output: str) -> int:
+    """Return the total count from ``--list-files`` output."""
+    for line in reversed(output.splitlines()):
+        if line.startswith(TOTAL_FILES_PREFIX):
+            return int(line.removeprefix(TOTAL_FILES_PREFIX))
+    raise AssertionError("missing total files line")
 
 
 def make_symlink(link: Path, target: Path, *, directory: bool = False) -> None:

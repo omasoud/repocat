@@ -122,6 +122,7 @@ def run_main(argv: Sequence[str]) -> int:
     if options.list_files:
         for captured_file in captured:
             typer.echo(captured_file.root_relative_path)
+        typer.echo(f"Total files: {len(captured)}")
         return 0
 
     output = render_markdown(captured) if options.output_format == "markdown" else render_cxml(captured)

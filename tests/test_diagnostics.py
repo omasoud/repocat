@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import invoke_repocat, listed_paths, write_bytes, write_text
+from conftest import invoke_repocat, listed_paths, listed_total, write_bytes, write_text
 
 
 def test_list_files_matches_render_membership_and_order(runner, monkeypatch, tmp_path: Path) -> None:
@@ -18,6 +18,7 @@ def test_list_files_matches_render_membership_and_order(runner, monkeypatch, tmp
 
     assert listed.exit_code == 0
     assert listed_paths(listed.stdout) == [".gitignore", "a.txt", "b.txt"]
+    assert listed_total(listed.stdout) == 3
     assert rendered.stdout.index("<source>.gitignore</source>") < rendered.stdout.index("<source>a.txt</source>")
     assert rendered.stdout.index("<source>a.txt</source>") < rendered.stdout.index("<source>b.txt</source>")
     assert "<source>ignored.txt</source>" not in rendered.stdout
