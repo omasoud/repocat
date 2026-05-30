@@ -12,13 +12,28 @@ rules, explicit interactive-stdout handling, and CXML output by default.
 
 ## Install
 
+Install as a standalone tool (recommended):
+
+```bash
+uv tool install repocat
+# or
+pipx install repocat
+```
+
+Or install into your current environment:
+
+```bash
+uv add repocat
+# or
+pip install repocat
+```
+
+To develop locally:
+
 ```bash
 uv sync
 uv run repocat --list-files
 ```
-
-The package also exposes the `repocat` console script when installed from this
-project.
 
 ## Usage
 

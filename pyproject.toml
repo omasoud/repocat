@@ -3,8 +3,21 @@ name = "repocat"
 version = "0.3.0"
 description = "Deterministic repository capture for prompt-friendly output"
 readme = "README.md"
+license = { file = "LICENSE" }
 authors = [
     { name = "omasoud", email = "osama.masoud@gmail.com" }
+]
+keywords = ["llm", "prompt", "context", "repository", "cli", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
 ]
 requires-python = ">=3.14"
 dependencies = [
@@ -12,6 +25,11 @@ dependencies = [
     "rich>=15.0.0",
     "typer>=0.25.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/omasoud/repocat"
+Source = "https://github.com/omasoud/repocat"
+"Bug Tracker" = "https://github.com/omasoud/repocat/issues"
 
 [project.scripts]
 repocat = "repocat:main"
